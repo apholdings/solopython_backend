@@ -1,0 +1,34 @@
+version: '3.8'
+services:
+  # Django App
+  solopython_backend:
+   container_name: django
+   build: .
+   volumes:
+    - .:/app
+   ports:
+    - 8000:8000
+   depends_on:
+    - solopython_db
+    - solopython_redis
+  
+  # Database (PostgreSQL)
+  solopython_db:
+   image: postgres
+   container_name: postgresql
+   restart: always
+   environment:
+      POSTGRES_DB: solopython_db
+      POSTGRES_USER: solopython
+      POSTGRES_PASSWORD: postgres
+   ports:
+    - 5432:5432
+   volumes:
+      - .dbdata:/var/lib/postgresql
+  
+  # Redis Cache
+  solopython_redis:
+    image: redis
+    container_name: redis
+    ports:
+      - 6379:6379
