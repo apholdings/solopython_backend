@@ -56,12 +56,14 @@ class GetTotalView(StandardAPIView):
 
         courses = []
         products = []
+        tiers = []
         total_cost = Decimal(0)
         total_compare_cost = Decimal(0)
         tax_estimate = Decimal(0)
         shipping_estimate = Decimal(0)
         finalProductPrice = Decimal(0)
         finalCoursePrice = Decimal(0)
+        finalTierPrice = Decimal(0)
         finalPrice = Decimal(0)
 
         for item in data.get("items"):
@@ -69,6 +71,8 @@ class GetTotalView(StandardAPIView):
                 courses.append(item)
             elif item.get("product"):
                 products.append(item)
+            elif item.get("tier"):
+                tiers.append(item)
 
         for object in courses:
             course = object["course"] if object["course"] else None
@@ -140,7 +144,81 @@ class GetTotalView(StandardAPIView):
             # print('Tax Estimate: ',tax_estimate )
             finalCoursePrice = Decimal(total_compare_cost) + Decimal(tax_estimate)
 
-        finalPrice = Decimal(finalProductPrice) + Decimal(finalCoursePrice)
+        for object in tiers:
+            tier = object["tier"] if object["tier"] else None
+            coupon = object["coupon"] if object["coupon"] else None
+
+            if coupon:
+                coupon_fixed_price_coupon = coupon.get("fixed_price_coupon")
+                coupon_percentage_coupon = coupon.get("percentage_coupon")
+
+                if coupon_fixed_price_coupon:
+                    coupon_fixed_discount_price = coupon_fixed_price_coupon.get(
+                        "discount_price"
+                    )
+
+                else:
+                    coupon_fixed_discount_price = None
+
+                if coupon_percentage_coupon:
+                    coupon_discount_percentage = coupon_percentage_coupon.get(
+                        "discount_percentage"
+                    )
+
+                else:
+                    coupon_discount_percentage = None
+            else:
+                coupon_fixed_price_coupon = None
+                coupon_fixed_discount_price = None
+                coupon_percentage_coupon = None
+                coupon_discount_percentage = None
+
+            tier_price = tier.get("transaction_amount")
+            tier_compare_price = tier.get("compare_price", tier_price)
+            tier_discount = tier.get("discount", False)
+
+            # Calculate Total Cost Without Discounts and Coupons and Taxes (total_cost)
+            if tier_discount == False:
+                total_cost += Decimal(tier_price)
+            else:
+                total_cost += Decimal(tier_compare_price)
+
+            # Calculate Total Cost With Discount and Coupons if present (total_compare_cost)
+            if tier_discount == True:
+                if coupon_fixed_discount_price is not None:
+                    total_compare_cost += max(
+                        Decimal(tier_compare_price)
+                        - Decimal(coupon_fixed_discount_price),
+                        0,
+                    )
+                elif coupon_discount_percentage is not None:
+                    total_compare_cost += Decimal(tier_compare_price) * (
+                        1 - (Decimal(coupon_discount_percentage) / 100)
+                    )
+                else:
+                    total_compare_cost += Decimal(tier_compare_price)
+            else:
+                if coupon_fixed_discount_price is not None:
+                    total_compare_cost += max(
+                        Decimal(tier_price) - Decimal(coupon_fixed_discount_price), 0
+                    )
+                elif coupon_discount_percentage is not None:
+                    total_compare_cost += Decimal(tier_price) * (
+                        1 - (Decimal(coupon_discount_percentage) / 100)
+                    )
+                else:
+                    total_compare_cost += Decimal(tier_price)
+
+            # Calculate Taxes for Total Cost (tax_estimate)
+            tax_estimate = Decimal(total_compare_cost) * Decimal(taxes)
+            # print('Tax Estimate: ',tax_estimate )
+            finalTierPrice = Decimal(total_compare_cost) + Decimal(tax_estimate)
+
+        finalPrice = (
+            Decimal(finalProductPrice)
+            + Decimal(finalCoursePrice)
+            + Decimal(finalTierPrice)
+        )
 
         eth_price = cache.get("eth_price")
         matic_price = cache.get("matic_price")
@@ -176,13 +254,16 @@ class AddItemView(StandardAPIView):
         user = request.user
         data = request.data
 
+        print(data)
+
         item_id = data["itemID"]
         item_type = data["type"]
         coupon_id = (
             data.get("coupon", {}).get("id") if data.get("coupon").get("id") else None
         )
         cart, created = Cart.objects.get_or_create(user=user)
-        total_items = cart.total_items
+
+        total_items = cart.total_items or 0
 
         if item_type == "Course":
             course = Course.objects.get(id=item_id)
@@ -219,6 +300,41 @@ class AddItemView(StandardAPIView):
                 total_items = int(cart.total_items) + 1
                 Cart.objects.filter(user=user).update(total_items=total_items)
 
+        if item_type == "Tier":
+            tier = Tier.objects.get(id=item_id)
+            # Check if item already in cart
+            if CartItem.objects.filter(cart=cart, tier=tier).exists():
+                return self.send_error(
+                    "Item is already in cart", status=status.HTTP_409_CONFLICT
+                )
+
+            cart_item_object = CartItem.objects.create(tier=tier, cart=cart)
+
+            if data.get("coupon").get("id") is not None:
+                # Get the coupon object
+                coupon = Coupon.objects.get(id=coupon_id)
+
+                # Validate that the coupon applies to the course
+                if coupon.content_type != "tiers" or coupon.tier != tier:
+                    return self.send_error(
+                        "Coupon does not apply to this tier",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                cart_item_object.coupon = coupon
+                cart_item_object.save()
+
+            # Check for referrer and save it if present
+            if "referrer" in data:
+                referrer = data["referrer"]
+                cart_item_object.referrer = referrer
+                cart_item_object.save()
+
+            if CartItem.objects.filter(cart=cart, tier=tier).exists():
+                # Update the total number of items in the cart
+                total_items = int(total_items) + 1
+                Cart.objects.filter(user=user).update(total_items=total_items)
+
         cart_items = CartItem.objects.filter(cart=cart)
         serialized_cart_items = CartItemSerializer(cart_items, many=True).data
 
@@ -242,6 +358,21 @@ class RemoveItemView(StandardAPIView):
         if item_type == "Course":
             course = Course.objects.get(id=item_id)
             cart_item = CartItem.objects.filter(cart=cart, course=course)
+
+            if not cart_item.exists():
+                return self.send_error(
+                    "Item is not in cart", status=status.HTTP_404_NOT_FOUND
+                )
+
+            cart_item.delete()
+
+            # Update the total number of items in the cart
+            total_items = max(0, int(cart.total_items) - 1)
+            Cart.objects.filter(user=user).update(total_items=total_items)
+
+        if item_type == "Tier":
+            tier = Tier.objects.get(id=item_id)
+            cart_item = CartItem.objects.filter(cart=cart, tier=tier)
 
             if not cart_item.exists():
                 return self.send_error(
@@ -284,6 +415,7 @@ class SynchCartItemsView(StandardAPIView):
         items = []
         courses = []
         products = []
+        tiers = []
 
         data = request.data
 
@@ -298,6 +430,8 @@ class SynchCartItemsView(StandardAPIView):
                 courses.append(item)
             elif item["type"] == "Product":
                 products.append(item)
+            elif item["type"] == "Tier":
+                tiers.append(item)
 
         # Add courses to the cart
         for course_data in courses:
@@ -315,6 +449,27 @@ class SynchCartItemsView(StandardAPIView):
                 course=course,
                 coupon=coupon,
                 referrer=course_data.get("referrer"),
+            )
+            item.save()
+
+            items.append(item)
+
+        # Add courses to the cart
+        for tier_data in tiers:
+            tier = Tier.objects.get(id=tier_data["tier"]["id"])
+
+            coupon_id = tier_data.get("coupon").get("id")
+            if coupon_id is not None:
+                coupon = Coupon.objects.get(id=coupon_id)
+            else:
+                coupon = None
+
+            # create and save the cart item
+            item = CartItem(
+                cart=cart,
+                tier=tier,
+                coupon=coupon,
+                referrer=tier_data.get("referrer"),
             )
             item.save()
 

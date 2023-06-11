@@ -36,6 +36,8 @@ class CourseListSerializer(serializers.ModelSerializer):
     thumbnail = serializers.CharField(source="get_first_image")
     video = serializers.CharField(source="get_first_video")
     category = serializers.CharField(source="get_category_name")
+    student_rating = serializers.IntegerField(source="get_rating")
+    student_rating_no = serializers.IntegerField(source="get_no_rating")
 
     class Meta:
         model = Course
@@ -66,6 +68,8 @@ class CourseListSerializer(serializers.ModelSerializer):
             "best_seller",
             "status",
             "description",
+            "student_rating",
+            "student_rating_no",
         ]
 
 
@@ -224,15 +228,31 @@ class EpisodeCompletionSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class QuestionSerializer(serializers.ModelSerializer):
+class AnswerSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    liked_by_user = serializers.BooleanField()
+    disliked_by_user = serializers.BooleanField()
+    likes_count = serializers.IntegerField()
+    dislikes_count = serializers.IntegerField()
+    get_answers_count = serializers.IntegerField()
+
     class Meta:
-        model = Question
+        model = Answer
         fields = "__all__"
 
 
-class AnswerSerializer(serializers.ModelSerializer):
+class QuestionSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    liked_by_user = serializers.BooleanField()
+    disliked_by_user = serializers.BooleanField()
+    likes_count = serializers.IntegerField()
+    dislikes_count = serializers.IntegerField()
+    get_answers_count = serializers.IntegerField()
+    correct_answer = AnswerSerializer()
+
+    # get_answers = serializers.IntegerField()
     class Meta:
-        model = Answer
+        model = Question
         fields = "__all__"
 
 

@@ -11,7 +11,8 @@ services:
    depends_on:
     - solopython_db
     - solopython_redis
-  
+   tty: true  # Add this line to enable pseudo-terminal allocation
+    
   # Database (PostgreSQL)
   solopython_db:
    image: postgres

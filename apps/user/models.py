@@ -6,6 +6,12 @@ from django.contrib.auth.models import (
 )
 import uuid
 from django.utils import timezone
+from djoser.signals import user_registered
+
+import mercadopago
+from django.conf import settings
+
+sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
 
 
 class UserAccountManager(BaseUserManager):
@@ -46,12 +52,24 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=100, unique=True)
 
+    mercado_pago_id = models.CharField(max_length=100, blank=True, null=True)
+    mercado_pago_user_id = models.CharField(max_length=100, blank=True, null=True)
+    mercado_pago_merchant_id = models.CharField(max_length=100, blank=True, null=True)
+    mercado_pago_client_id = models.CharField(max_length=100, blank=True, null=True)
+
     picture = models.ImageField(
         default="media/users/user_default_profile.png",
         upload_to="media/users/pictures/",
         blank=True,
         null=True,
         verbose_name="Picture",
+    )
+    banner = models.ImageField(
+        default="media/users/user_default_bg.jpg",
+        upload_to="media/users/pictures/",
+        blank=True,
+        null=True,
+        verbose_name="Banner",
     )
 
     first_name = models.CharField(max_length=100)
@@ -75,3 +93,29 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+def post_user_registered(request, user, *args, **kwargs):
+    # 1. Definir usuario que ser registra
+    user = user
+    customer_data = {
+        "email": user.email,
+    }
+    customer_response = sdk.customer().create(customer_data)
+    customer = customer_response["response"]
+
+    # Save Customer ID in Django DB
+    user.mercado_pago_id = customer["id"]
+    user.mercado_pago_user_id = customer["user_id"]
+    user.mercado_pago_merchant_id = customer["merchant_id"]
+    user.mercado_pago_client_id = customer["client_id"]
+    user.save()
+
+    # print(
+    #     f"""
+    #     Mercado pago Customer Created {customer}
+    #     """
+    # )
+
+
+user_registered.connect(post_user_registered)

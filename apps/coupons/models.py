@@ -1,5 +1,6 @@
 from django.db import models
 from apps.courses.models import Course
+from apps.tiers.models import Tier
 import uuid
 from django.conf import settings
 
@@ -10,6 +11,7 @@ class Coupon(models.Model):
     types = (
         ("courses", "Courses"),
         ("products", "Products"),
+        ("tiers", "Tiers"),
         ("games", "Games"),
         ("music", "Music"),
         ("videos", "Videos"),
@@ -34,6 +36,7 @@ class Coupon(models.Model):
     )
     content_type = models.CharField(choices=types, max_length=20, default="courses")
     course = models.ForeignKey(Course, on_delete=models.CASCADE, blank=True, null=True)
+    tier = models.ForeignKey(Tier, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return self.name

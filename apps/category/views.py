@@ -61,13 +61,13 @@ class ListPopularTopicsView(StandardAPIView):
 
 class ListPrimaryCategoriesView(StandardAPIView):
     def get(self, request, format=None):
-        cache_key = "primary_categories"
-        primary_categories = cache.get(cache_key)
+        # cache_key = "primary_categories"
+        # primary_categories = cache.get(cache_key)
 
-        if primary_categories is None:
-            categories = Category.objects.filter(parent=None)
-            serializer = CategorySerializer(categories, many=True)
-            cache.set(cache_key, serializer.data, 900)  # Cache for 15 minutes
-            return self.paginate_response(request, serializer.data)
-        else:
-            return self.paginate_response(request, primary_categories)
+        # if primary_categories is None:
+        categories = Category.objects.filter(parent=None)
+        serializer = CategorySerializer(categories, many=True)
+        # cache.set(cache_key, serializer.data, 900)  # Cache for 15 minutes
+        return self.paginate_response(request, serializer.data)
+        # else:
+        # return self.paginate_response(request, primary_categories)

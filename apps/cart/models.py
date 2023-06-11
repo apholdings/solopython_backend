@@ -1,6 +1,7 @@
 from django.db import models
 from apps.courses.models import Course
 from apps.coupons.models import Coupon
+from apps.tiers.models import Tier
 from djoser.signals import user_registered
 import uuid
 from django.conf import settings
@@ -21,7 +22,8 @@ class CartItem(models.Model):
     coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE, blank=True, null=True)
     referrer = models.CharField(max_length=512, blank=True, null=True)
 
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, blank=True, null=True)
+    tier = models.ForeignKey(Tier, on_delete=models.CASCADE, blank=True, null=True)
 
     # product = models.ForeignKey(Cart, on_delete=models.CASCADE)
     # count = models.IntegerField(blank=True, null=True)

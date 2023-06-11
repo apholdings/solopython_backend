@@ -1,3 +1,4 @@
+from djoser.serializers import PasswordResetConfirmSerializer
 from djoser.serializers import UserCreateSerializer
 from rest_framework import serializers
 
@@ -14,6 +15,7 @@ class UserSerializer(UserCreateSerializer):
             "email",
             "username",
             "picture",
+            "banner",
             "first_name",
             "last_name",
             "is_online",
@@ -24,3 +26,9 @@ class UserSerializer(UserCreateSerializer):
             "date_joined",
             "updated_at",
         ]
+
+
+class CustomPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
+    def build_password_reset_confirm_url(self, uid, token):
+        url = f"?forgot_password_confirm=True&uid={uid}&token={token}"
+        return url

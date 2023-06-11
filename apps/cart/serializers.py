@@ -2,10 +2,12 @@ from rest_framework import serializers
 from .models import Cart, CartItem
 from apps.courses.serializers import CourseListSerializer
 from apps.coupons.serializers import CouponSerializer
+from apps.tiers.serializers import TierSerializer
 
 
 class CartItemSerializer(serializers.ModelSerializer):
     course = CourseListSerializer()
+    tier = TierSerializer()
     coupon = CouponSerializer()
 
     class Meta:
@@ -16,6 +18,7 @@ class CartItemSerializer(serializers.ModelSerializer):
             "coupon",
             "referrer",
             "course",
+            "tier",
         ]
 
 

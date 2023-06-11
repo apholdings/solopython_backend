@@ -141,11 +141,11 @@ class QuestionAdmin(admin.ModelAdmin):
         "id",
         "user",
         "title",
-        "created_date",
+        "created_at",
         "episode",
         "has_accepted_answer",
     ]
-    list_filter = ["user", "created_date", "episode", "has_accepted_answer"]
+    list_filter = ["user", "created_at", "episode", "has_accepted_answer"]
     search_fields = ["title", "user__username", "body"]
 
 

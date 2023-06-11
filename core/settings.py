@@ -80,6 +80,11 @@ PROJECT_APPS = [
     "apps.coupons",
     "apps.payments",
     "apps.orders",
+    "apps.reviews",
+    "apps.contacts",
+    "apps.tiers",
+    "apps.blog",
+    "apps.newsletter",
 ]
 
 THIRD_PARTY_APPS = [
@@ -92,7 +97,13 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "channels",
     "storages",
+    "ckeditor",
+    "ckeditor_uploader",
+    "django_bunny_storage",
 ]
+
+CKEDITOR_CONFIGS = {"default": {"toolbar": "full", "autoParagraph": False}}
+CKEDITOR_UPLOAD_PATH = "/media/"
 
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS
 
@@ -201,6 +212,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
+
 STATIC_URL = "/static/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
@@ -247,7 +259,7 @@ DJOSER = {
     "SEND_CONFIRMATION_EMAIL": True,
     "SEND_ACTIVATION_EMAIL": True,
     "SET_USERNAME_RETYPE": True,
-    "PASSWORD_RESET_CONFIRM_URL": "forgot_password_confirm?uid={uid}&token={token}",
+    "PASSWORD_RESET_CONFIRM_URL": "?forgot_password_confirm=True&uid={uid}&token={token}",
     "SET_PASSWORD_RETYPE": True,
     "PASSWORD_RESET_CONFIRM_RETYPE": True,
     "USERNAME_RESET_CONFIRM_URL": "email/reset/confirm/{uid}/{token}",
@@ -262,6 +274,7 @@ DJOSER = {
         "user": "apps.user.serializers.UserSerializer",
         "current_user": "apps.user.serializers.UserSerializer",
         "user_delete": "djoser.serializers.UserDeleteSerializer",
+        "password_reset_confirm": "apps.user.serializers.CustomPasswordResetConfirmSerializer",
     },
     "TEMPLATES": {
         "activation": "email/activation.html",
@@ -302,6 +315,13 @@ if not DEBUG:
 
     # Default "from" address for sending emails
     DEFAULT_FROM_EMAIL = "SoloPython <noreply@solopython.com>"
+
+    BUNNY_USERNAME = env("BUNNYCDN_STORAGE_USERNAME")
+    BUNNY_PASSWORD = env("BUNNYCDN_STORAGE_PASSWORD")
+    BUNNY_REGION = "br"
+    MEDIA_URL = f"https://{BUNNY_USERNAME}.b-cdn.net/"
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
 
 # django-ckeditor will not work with S3 through django-storages without this line in settings.py
 AWS_QUERYSTRING_AUTH = False

@@ -580,7 +580,11 @@ class Question(models.Model):
     )
     title = models.CharField(max_length=120)
     body = models.TextField()
-    created_date = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    answers = models.ManyToManyField(
+        "Answer", blank=True, related_name="question_answers"
+    )
 
     episode = models.ForeignKey(
         "Episode",
@@ -604,7 +608,7 @@ class Question(models.Model):
     )
 
     class Meta:
-        ordering = ("-created_date",)
+        ordering = ("-created_at",)
 
     def __str__(self):
         return self.title
@@ -680,6 +684,9 @@ class Answer(models.Model):
     def dislikes_count(self):
         dislikes_count = self.dislikes.count()
         return dislikes_count
+
+    def get_answers_count(self):
+        return Answer.objects.filter(question=self.question).count()
 
 
 class Like(models.Model):

@@ -15,6 +15,9 @@ class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255, blank=True, null=True)
     description = models.TextField(max_length=2400, blank=True, null=True)
+    thumbnail = models.FileField(
+        upload_to="categories/thumbnail", blank=True, null=True
+    )
     slug = models.SlugField(max_length=255, unique=True)
     views = models.PositiveIntegerField(default=0, blank=True)
     buyers = models.PositiveIntegerField(default=0, blank=True)
